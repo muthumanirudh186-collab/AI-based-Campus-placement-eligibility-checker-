@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Campus Placement Portal</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          ink: '#16213E',
+          inkdeep: '#0E1730',
+          paper: '#EEEBE1',
+          papercard: '#F7F5EE',
+          gold: '#B8860B',
+          goldlight: '#D4A72C',
+          forest: '#2F5233',
+          maroon: '#7A2E2E',
+        },
+        fontFamily: {
+          display: ['Fraunces', 'serif'],
+          body: ['Inter', 'sans-serif'],
+          mono: ['JetBrains Mono', 'monospace'],
+        }
+      }
+    }
+  }
+</script>
+
+<style>
+  body {
+    background-color: #EEEBE1;
+    background-image:
+      linear-gradient(rgba(22,33,62,0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(22,33,62,0.035) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .stamp {
+    transform: rotate(-9deg);
+    border: 3px double currentColor;
+    border-radius: 6px;
+  }
+  .folder-tab {
+    clip-path: polygon(10% 0%, 90% 0%, 100% 100%, 0% 100%);
+  }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #16213E33; border-radius: 4px; }
+  @keyframes bounce-dot {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+    30% { transform: translateY(-4px); opacity: 1; }
+  }
+  .dot { animation: bounce-dot 1.2s infinite; }
+  .dot:nth-child(2) { animation-delay: 0.15s; }
+  .dot:nth-child(3) { animation-delay: 0.3s; }
+</style>
+</head>
+<body class="font-body text-ink">
+
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react" data-type="module">
+import React, { useState, useEffect, useRef } from "https://esm.sh/react@18.3.1";
+import ReactDOM from "https://esm.sh/react-dom@18.3.1/client";
+import {
+  GraduationCap,
+  Building2,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  MessageSquare,
+  Send,
+  X,
+  BookOpen,
+  Briefcase,
+  ChevronDown,
+  Sparkles,
+  FileText,
+  Video,
+  Award,
+  ArrowRight,
+  RefreshCw,
+  Volume2,
+  VolumeX,
+  Play,
+  Check,
+  HelpCircle,
+  TrendingUp,
+  BrainCircuit,
+  BookOpenCheck
+} from "https://esm.sh/lucide-react@0.383.0?external=react";
+
+const COMPANIES = [
+  { id: 1, name: "TCS", role: "Ninja (System Engineer)", reqTenth: 60, reqTwelfth: 60, reqCgpa: 6.0, maxActiveBacklogs: 1, maxGapYears: 2, allowedBranches: ["ALL"], package: "3.36 LPA" },
+  { id: 2, name: "TCS", role: "Digital (Systems Engineer Specialist)", reqTenth: 70, reqTwelfth: 70, reqCgpa: 7.0, maxActiveBacklogs: 0, maxGapYears: 2, allowedBranches: ["CSE", "IT", "ECE", "EEE"], package: "7.0 LPA" },
+  { id: 3, name: "Infosys", role: "System Engineer", reqTenth: 60, reqTwelfth: 60, reqCgpa: 6.0, maxActiveBacklogs: 0, maxGapYears: 2, allowedBranches: ["ALL"], package: "3.6 LPA" },
+  { id: 4, name: "Wipro", role: "Elite Project Engineer", reqTenth: 60, reqTwelfth: 60, reqCgpa: 6.0, maxActiveBacklogs: 1, maxGapYears: 3, allowedBranches: ["ALL"], package: "3.5 LPA" },
+  { id: 5, name: "Amazon", role: "SDE-1", reqTenth: 65, reqTwelfth: 65, reqCgpa: 7.5, maxActiveBacklogs: 0, maxGapYears: 1, allowedBranches: ["CSE", "IT", "Maths & Computing"], package: "44 LPA (Total CTC)" },
+  { id: 6, name: "Cognizant", role: "GenC Developer", reqTenth: 60, reqTwelfth: 60, reqCgpa: 6.0, maxActiveBacklogs: 0, maxGapYears: 2, allowedBranches: ["ALL"], package: "4.0 LPA" },
+  { id: 7, name: "Accenture", role: "Associate Software Engineer", reqTenth: 65, reqTwelfth: 65, reqCgpa: 6.5, maxActiveBacklogs: 0, maxGapYears: 1, allowedBranches: ["ALL"], package: "4.5 LPA" },
+  { id: 8, name: "Capgemini", role: "Analyst", reqTenth: 60, reqTwelfth: 60, reqCgpa: 6.0, maxActiveBacklogs: 0, maxGapYears: 2, allowedBranches: ["ALL"], package: "4.25 LPA" }
+];
+
+const BRANCHES = ["CSE", "IT", "ECE", "EEE", "MECH", "CIVIL", "CHEMICAL", "Maths & Computing", "Other"];
+const TEST_CATEGORIES = ["Aptitude", "Coding", "Verbal", "Technical (CS Fundamentals)", "HR/Behavioral"];
+const UNIQUE_COMPANY_NAMES = [...new Set(COMPANIES.map(c => c.name))];
+
+const base64ToArrayBuffer = (base64) => {
+  const binaryString = window.atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) bytes[i] = binaryString.charCodeAt(i);
+  return bytes.buffer;
+};
+
+const pcmToWav = (pcm16, sampleRate) => {
+  const buffer = new ArrayBuffer(44 + pcm16.length * 2);
+  const view = new DataView(buffer);
+  const writeString = (view, offset, string) => {
+    for (let i = 0; i < string.length; i++) view.setUint8(offset + i, string.charCodeAt(i));
+  };
+  writeString(view, 0, 'RIFF');
+  view.setUint32(4, 36 + pcm16.length * 2, true);
+  writeString(view, 8, 'WAVE');
+  writeString(view, 12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeString(view, 36, 'data');
+  view.setUint32(40, pcm16.length * 2, true);
+  let offset = 44;
+  for (let i = 0; i < pcm16.length; i++, offset += 2) view.setInt16(offset, pcm16[i], true);
+  return new Blob([buffer], { type: 'audio/wav' });
+};
+
+// Lightweight formatter for **bold**, "- " bullets and blank-line paragraphs
+// (kept intentionally simple — no HTML injection, plain JSX only).
+function FormattedText({ text }) {
+  if (!text) return null;
+  const lines = text.split(/\n/);
+  const renderInline = (line, key) => {
+    const parts = line.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
+    return (
+      <span key={key}>
+        {parts.map((part, i) =>
+          part.startsWith('**') && part.endsWith('**')
+            ? <strong key={i} className="font-semibold text-ink">{part.slice(2, -2)}</strong>
+            : <React.Fragment key={i}>{part}</React.Fragment>
+        )}
+      </span>
+    );
+  };
+  return (
+    <div className="space-y-2 leading-relaxed">
+      {lines.map((line, idx) => {
+        const trimmed = line.trim();
+        if (!trimmed) return null;
+        if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+          return (
+            <div key={idx} className="flex gap-2 pl-1">
+              <span className="text-gold mt-1">&#9670;</span>
+              <p>{renderInline(trimmed.slice(2), idx)}</p>
+            </div>
+          );
+        }
+        if (/^#{1,3}\s/.test(trimmed)) {
+          return <p key={idx} className="font-display font-semibold text-lg text-ink mt-3">{renderInline(trimmed.replace(/^#{1,3}\s/, ''), idx)}</p>;
+        }
+        return <p key={idx}>{renderInline(trimmed, idx)}</p>;
+      })}
+    </div>
+  );
+}
+
+function StampBadge({ eligible }) {
+  return (
+    <div className={
+      "stamp px-3 py-1.5 text-xs font-display font-bold tracking-widest uppercase inline-flex items-center gap-1.5 " +
+      (eligible ? "text-forest" : "text-maroon")
+    }>
+      {eligible ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
+      {eligible ? "Eligible" : "Not Eligible"}
+    </div>
+  );
+}
+
+function TabButton({ id, label, icon: Icon, active, onClick }) {
+  return (
+    <button
+      onClick={() => onClick(id)}
+      className={
+        "folder-tab flex items-center gap-2 px-5 pt-3 pb-4 -mb-px font-body font-semibold text-sm transition-colors " +
+        (active
+          ? "bg-papercard text-ink border-t-2 border-x-2 border-ink/10"
+          : "bg-ink/5 text-ink/50 hover:text-ink/80 hover:bg-ink/10")
+      }
+    >
+      <Icon size={16} />
+      {label}
+    </button>
+  );
+}
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState('eligibility');
+
+  const [profile, setProfile] = useState({
+    tenthPercent: '82',
+    twelfthPercent: '85',
+    cgpa: '7.8',
+    activeBacklogs: '0',
+    gapYears: '0',
+    branch: 'CSE'
+  });
+
+  const [results, setResults] = useState([]);
+  const [hasEvaluated, setHasEvaluated] = useState(false);
+
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState([
+    { role: 'model', text: 'Hi! I am your AI Placement Advisor. Ask me for PYQs, syllabus books, or interview secrets of any company!' }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef(null);
+
+  const [interviewCompany, setInterviewCompany] = useState('TCS');
+  const [interviewRole, setInterviewRole] = useState('Digital SDE');
+  const [interviewStarted, setInterviewStarted] = useState(false);
+  const [interviewRound, setInterviewRound] = useState(0);
+  const [interviewHistory, setInterviewHistory] = useState([]);
+  const [currentQuestion, setCurrentQuestion] = useState('');
+  const [userAnswer, setUserAnswer] = useState('');
+  const [isInterviewLoading, setIsInterviewLoading] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [audioUrl, setAudioUrl] = useState(null);
+  const [interviewerFeedback, setInterviewerFeedback] = useState(null);
+  const [interviewVoiceEnabled, setInterviewVoiceEnabled] = useState(true);
+  const audioRef = useRef(null);
+
+  const [resumeTargetCompany, setResumeTargetCompany] = useState('Amazon');
+  const [resumeText, setResumeText] = useState(
+`John Doe
+Branch: Computer Science & Engineering
+Skills: Java, HTML, React, Node.js, Git
+Projects:
+1. E-commerce Website: Built simple shopping site using React. Used LocalStorage for cart.
+2. Library Management System: Java Swing UI with JDBC connectivity.`
+  );
+  const [resumeFeedback, setResumeFeedback] = useState(null);
+  const [isResumeAnalyzing, setIsResumeAnalyzing] = useState(false);
+
+  const [selectedTestCompany, setSelectedTestCompany] = useState('TCS');
+  const [selectedCategory, setSelectedCategory] = useState('Aptitude');
+  const [generatedTest, setGeneratedTest] = useState([]);
+  const [isGeneratingTest, setIsGeneratingTest] = useState(false);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [selectedAnswers, setSelectedAnswers] = useState({});
+  const [showTestResults, setShowTestResults] = useState(false);
+
+  useEffect(() => { runEligibilityCheck(); }, []);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setProfile(prev => ({ ...prev, [name]: value }));
+  };
+
+  const runEligibilityCheck = () => {
+    const pTenth = parseFloat(profile.tenthPercent) || 0;
+    const pTwelfth = parseFloat(profile.twelfthPercent) || 0;
+    const pCgpa = parseFloat(profile.cgpa) || 0;
+    const pBacklogs = parseInt(profile.activeBacklogs) || 0;
+    const pGaps = parseInt(profile.gapYears) || 0;
+    const pBranch = profile.branch;
+
+    const evaluated = COMPANIES.map(company => {
+      let reasons = [];
+      if (pTenth < company.reqTenth) reasons.push(`10th percentage (${pTenth}%) is below required ${company.reqTenth}%`);
+      if (pTwelfth < company.reqTwelfth) reasons.push(`12th/Diploma percentage (${pTwelfth}%) is below required ${company.reqTwelfth}%`);
+      if (pCgpa < company.reqCgpa) reasons.push(`CGPA (${pCgpa}) is below required ${company.reqCgpa}`);
+      if (pBacklogs > company.maxActiveBacklogs) reasons.push(`Active backlogs (${pBacklogs}) exceed allowed limit (${company.maxActiveBacklogs})`);
+      if (pGaps > company.maxGapYears) reasons.push(`Gap years (${pGaps}) exceed allowed limit (${company.maxGapYears})`);
+      if (!company.allowedBranches.includes("ALL") && !company.allowedBranches.includes(pBranch)) {
+        reasons.push(`Branch '${pBranch}' is not eligible. Allowed: ${company.allowedBranches.join(", ")}`);
+      }
+      return { ...company, isEligible: reasons.length === 0, reasons };
+    });
+
+    setResults(evaluated);
+    setHasEvaluated(true);
+  };
+
+  const evaluateEligibility = (e) => {
+    e.preventDefault();
+    runEligibilityCheck();
+  };
+
+  const fetchFromGemini = async (apiUrl, payload, retries = 3, delay = 1000) => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (response.ok) return await response.json();
+        if (response.status === 429) {
+          await new Promise(res => setTimeout(res, delay));
+          delay *= 2;
+          continue;
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      } catch (err) {
+        if (i === retries - 1) throw err;
+        await new Promise(res => setTimeout(res, delay));
+        delay *= 2;
+      }
+    }
+  };
+
+  const speakInterviewerQuestion = async (questionText) => {
+    if (!interviewVoiceEnabled) return;
+    setIsSpeaking(true);
+    try {
+      const apiKey = "";
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+      const cleanText = questionText.replace(/[*#]/g, '');
+      const payload = {
+        contents: [{ parts: [{ text: `Speak in a professional, polite, and confident corporate interviewer tone: ${cleanText}` }] }],
+        generationConfig: {
+          responseModalities: ["AUDIO"],
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Charon" } } }
+        },
+        model: "gemini-2.5-flash-preview-tts"
+      };
+      const data = await fetchFromGemini(apiUrl, payload);
+      const part = data?.candidates?.[0]?.content?.parts?.[0];
+      const audioData = part?.inlineData?.data;
+      const mimeType = part?.inlineData?.mimeType;
+      if (audioData && mimeType && mimeType.startsWith("audio/")) {
+        let sampleRate = 24000;
+        const rateMatch = mimeType.match(/rate=(\d+)/);
+        if (rateMatch) sampleRate = parseInt(rateMatch[1], 10);
+        const pcmData = base64ToArrayBuffer(audioData);
+        const pcm16 = new Int16Array(pcmData);
+        const wavBlob = pcmToWav(pcm16, sampleRate);
+        const url = URL.createObjectURL(wavBlob);
+        setAudioUrl(url);
+        setTimeout(() => {
+          if (audioRef.current) audioRef.current.play().catch(e => console.log("Audio autoplay prevented", e));
+        }, 100);
+      }
+    } catch (error) {
+      console.error("TTS generation error:", error);
+    } finally {
+      setIsSpeaking(false);
+    }
+  };
+
+  const startInterview = async () => {
+    setIsInterviewLoading(true);
+    setInterviewStarted(true);
+    setInterviewRound(1);
+    setInterviewHistory([]);
+    setUserAnswer('');
+    setInterviewerFeedback(null);
+    setAudioUrl(null);
+
+    const introPrompt = `Act as an interviewer from ${interviewCompany} for a ${interviewRole} role.
+    Ask the candidate the first interview question. Start directly with the question, making it highly specific to ${interviewCompany}'s technical standards and interview style. Be warm but strict. Keep your response short (max 3 sentences).`;
+
+    try {
+      const apiKey = "";
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+      const payload = { contents: [{ role: 'user', parts: [{ text: introPrompt }] }] };
+      const data = await fetchFromGemini(apiUrl, payload);
+      const question = data.candidates[0].content.parts[0].text;
+      setCurrentQuestion(question);
+      speakInterviewerQuestion(question);
+    } catch (error) {
+      console.error("Error starting interview:", error);
+      setCurrentQuestion("Could you tell me about yourself and your primary technical stack?");
+    } finally {
+      setIsInterviewLoading(false);
+    }
+  };
+
+  const submitInterviewAnswer = async () => {
+    if (!userAnswer.trim()) return;
+    setIsInterviewLoading(true);
+
+    const updatedHistory = [
+      ...interviewHistory,
+      { role: 'interviewer', text: currentQuestion },
+      { role: 'candidate', text: userAnswer }
+    ];
+    setInterviewHistory(updatedHistory);
+
+    try {
+      const apiKey = "";
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+      if (interviewRound < 3) {
+        const nextPrompt = `You are a corporate recruiter conducting a ${interviewCompany} interview for a ${interviewRole} position.
+        The conversation history is detailed below.
+        Provide a 1-sentence quick acknowledgement of the candidate's last answer, then ask a fresh technical or behavioral question based on their response. Keep your question highly challenging and relevant to ${interviewCompany}. No chat formatting, output just the interviewer speak. Max 4 sentences.`;
+
+        const formattedHistory = updatedHistory.map(h => ({
+          role: h.role === 'interviewer' ? 'model' : 'user',
+          parts: [{ text: h.text }]
+        }));
+        formattedHistory.push({ role: 'user', parts: [{ text: nextPrompt }] });
+
+        const payload = { contents: formattedHistory };
+        const data = await fetchFromGemini(apiUrl, payload);
+        const nextQuestion = data.candidates[0].content.parts[0].text;
+
+        setCurrentQuestion(nextQuestion);
+        setInterviewRound(prev => prev + 1);
+        setUserAnswer('');
+        speakInterviewerQuestion(nextQuestion);
+      } else {
+        const evaluationPrompt = `You have completed a 3-round interview with a student for ${interviewCompany} (${interviewRole}).
+        Evaluate their comprehensive performance.
+        Respond with structured markdown including:
+        - **Core Verdict** (Hired / On Hold / Rejected with a brief reason)
+        - **Strength Analysis** (Bullets on what they answered well)
+        - **Key Development Areas** (Specific programming/theoretical improvements needed)
+        - **Interview Scorecard**: Output ratings (out of 10) for Communication, Technical depth, and Behavioral match.`;
+
+        const formattedHistory = updatedHistory.map(h => ({
+          role: h.role === 'interviewer' ? 'model' : 'user',
+          parts: [{ text: h.text }]
+        }));
+        formattedHistory.push({ role: 'user', parts: [{ text: evaluationPrompt }] });
+
+        const payload = { contents: formattedHistory };
+        const data = await fetchFromGemini(apiUrl, payload);
+        const feedback = data.candidates[0].content.parts[0].text;
+        setInterviewerFeedback(feedback);
+        setInterviewRound(4);
+      }
+    } catch (error) {
+      console.error("Error processing interview step:", error);
+      setInterviewerFeedback("**Core Verdict:** Unable to reach the AI interviewer service right now. Please check the API configuration and try again.");
+      setInterviewRound(4);
+    } finally {
+      setIsInterviewLoading(false);
+    }
+  };
+
+  const resetInterview = () => {
+    setInterviewStarted(false);
+    setInterviewRound(0);
+    setInterviewHistory([]);
+    setCurrentQuestion('');
+    setUserAnswer('');
+    setInterviewerFeedback(null);
+    setAudioUrl(null);
+  };
+
+  const analyzeResume = async () => {
+    setIsResumeAnalyzing(true);
+    setResumeFeedback(null);
+    try {
+      const apiKey = "";
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+      const prompt = `Act as an expert technical recruiter or ATS system evaluating candidate resumes for Indian campuses.
+      Analyze this resume snippet specifically for **${resumeTargetCompany}** requirements.
+
+      Respond with structured markdown focusing on:
+      1. **ATS Compatibility Score** (out of 100)
+      2. **Critical Keywords Missing** (that recruiters look for in ${resumeTargetCompany} applications)
+      3. **Specific Projects Enhancement** (how they can describe their current projects more professionally, like adding quantifiers or impact metrics)
+      4. **Suggested Redraft Summary** (an optimized 3-sentence professional bio suited for their profile)`;
+
+      const payload = {
+        contents: [{ role: 'user', parts: [{ text: `Target Company: ${resumeTargetCompany}\n\nResume Details:\n${resumeText}\n\nPrompt:\n${prompt}` }] }]
+      };
+
+      const data = await fetchFromGemini(apiUrl, payload);
+      const feedback = data.candidates[0].content.parts[0].text;
+      setResumeFeedback(feedback);
+    } catch (error) {
+      console.error("Resume analysis error:", error);
+      setResumeFeedback("Could not complete resume assessment at this moment. Please check your network connection and API configuration.");
+    } finally {
+      setIsResumeAnalyzing(false);
+    }
+  };
+
+  const generateMockTest = async () => {
+    setIsGeneratingTest(true);
+    setShowTestResults(false);
+    setGeneratedTest([]);
+    setSelectedAnswers({});
+    setCurrentQuestionIndex(0);
+
+    try {
+      const apiKey = "";
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+      const userPrompt = `Generate a standard multiple-choice quiz of 5 questions specifically calibrated to the aptitude/coding rounds of **${selectedTestCompany}** under the **${selectedCategory}** section. Include a mix of difficulty levels.`;
+
+      const payload = {
+        contents: [{ parts: [{ text: userPrompt }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "ARRAY",
+            items: {
+              type: "OBJECT",
+              properties: {
+                id: { type: "NUMBER" },
+                question: { type: "STRING" },
+                options: { type: "ARRAY", items: { type: "STRING" } },
+                correctAnswerIndex: { type: "NUMBER" },
+                explanation: { type: "STRING" }
+              },
+              required: ["id", "question", "options", "correctAnswerIndex", "explanation"]
+            }
+          }
+        },
+        systemInstruction: {
+          parts: [{ text: "You are an expert campus placement examiner in India. Generate dynamic, realistic MCQ questions for tech companies like TCS, Infosys, Amazon, Wipro, and Accenture. Return ONLY valid JSON matching the schema." }]
+        }
+      };
+
+      const data = await fetchFromGemini(apiUrl, payload);
+      const jsonText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (jsonText) setGeneratedTest(JSON.parse(jsonText));
+    } catch (error) {
+      console.error("Error generating test JSON:", error);
+    } finally {
+      setIsGeneratingTest(false);
+    }
+  };
+
+  const handleAnswerSelect = (optionIndex) => {
+    setSelectedAnswers(prev => ({ ...prev, [currentQuestionIndex]: optionIndex }));
+  };
+
+  const computeScore = () => generatedTest.reduce(
+    (acc, q, idx) => acc + (selectedAnswers[idx] === q.correctAnswerIndex ? 1 : 0), 0
+  );
+
+  const scrollToBottom = () => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); };
+  useEffect(() => { scrollToBottom(); }, [chatMessages, isTyping]);
+
+  const handleSendMessage = async (customMessage = null) => {
+    const textToSend = customMessage || chatInput;
+    if (!textToSend.trim()) return;
+
+    const newUserMsg = { role: 'user', text: textToSend };
+    setChatMessages(prev => [...prev, newUserMsg]);
+    setChatInput('');
+    setIsTyping(true);
+    if (!isChatOpen) setIsChatOpen(true);
+
+    try {
+      const apiKey = "";
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+      const systemPrompt = `You are a top-tier Indian engineering college campus placement advisor.
+      Help students prepare for placements by answering questions about previous year questions (PYQs), recommended syllabus books, company-specific interview patterns, eligibility criteria, and general career guidance for companies like TCS, Infosys, Wipro, Amazon, Cognizant, Accenture, and Capgemini.
+      Keep answers concise, practical, and encouraging. Use short paragraphs or bullet points. Max 6 sentences unless the student asks for a detailed list.`;
+
+      const conversationHistory = [...chatMessages, newUserMsg]
+        .filter(m => m.role === 'user' || m.role === 'model')
+        .map(m => ({ role: m.role === 'model' ? 'model' : 'user', parts: [{ text: m.text }] }));
+
+      const payload = {
+        contents: conversationHistory,
+        systemInstruction: { parts: [{ text: systemPrompt }] }
+      };
+
+      const data = await fetchFromGemini(apiUrl, payload);
+      const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text
+        || "Sorry, I couldn't generate a response just now. Please try again.";
+      setChatMessages(prev => [...prev, { role: 'model', text: reply }]);
+    } catch (error) {
+      console.error("Chat error:", error);
+      setChatMessages(prev => [...prev, {
+        role: 'model',
+        text: "I'm having trouble reaching the advisor service right now — please check the API configuration and try again."
+      }]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen pb-24">
+      {/* Header */}
+      <header className="bg-ink text-papercard">
+        <div className="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-full border-2 border-gold flex items-center justify-center">
+              <GraduationCap size={22} className="text-gold" />
+            </div>
+            <div>
+              <h1 className="font-display font-bold text-2xl tracking-tight">The Placement Dossier</h1>
+              <p className="text-xs text-papercard/60 font-mono uppercase tracking-widest">Training &amp; Placement Cell</p>
+            </div>
+          </div>
+          <div className="hidden sm:flex items-center gap-1.5 text-xs font-mono text-papercard/50 border border-papercard/20 rounded-full px-3 py-1.5">
+            <Sparkles size={12} className="text-gold" />
+            AI-assisted prep tools
+          </div>
+        </div>
+      </header>
+
+      <p className="max-w-6xl mx-auto px-6 pt-3 text-xs text-ink/40 font-mono">
+        Note: interview, resume, and mock-test features call a generative-language API key that is left blank in this file — plug in a valid key to activate them.
+      </p>
+
+      {/* Tabs */}
+      <div className="max-w-6xl mx-auto px-6 mt-6 flex gap-1 overflow-x-auto">
+        <TabButton id="eligibility" label="Eligibility" icon={GraduationCap} active={activeTab === 'eligibility'} onClick={setActiveTab} />
+        <TabButton id="interview" label="Interview Sim" icon={BrainCircuit} active={activeTab === 'interview'} onClick={setActiveTab} />
+        <TabButton id="resume" label="Resume Review" icon={FileText} active={activeTab === 'resume'} onClick={setActiveTab} />
+        <TabButton id="test" label="Mock Test" icon={BookOpenCheck} active={activeTab === 'test'} onClick={setActiveTab} />
+      </div>
+
+      {/* Content panel */}
+      <main className="max-w-6xl mx-auto px-6">
+        <div className="bg-papercard border-2 border-ink/10 rounded-b-lg rounded-tr-lg shadow-sm p-6 sm:p-8 min-h-[420px]">
+
+          {/* ELIGIBILITY TAB */}
+          {activeTab === 'eligibility' && (
+            <div>
+              <div className="flex items-center gap-2 mb-6">
+                <Award size={20} className="text-gold" />
+                <h2 className="font-display font-semibold text-xl">Eligibility Checker</h2>
+              </div>
+
+              <form onSubmit={evaluateEligibility} className="grid sm:grid-cols-3 gap-4 mb-8">
+                <label className="text-sm">
+                  <span className="block text-ink/60 mb-1 font-medium">10th %</span>
+                  <input name="tenthPercent" value={profile.tenthPercent} onChange={handleInputChange} type="number" step="0.1"
+                    className="w-full border border-ink/15 rounded-md px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-gold/50" />
+                </label>
+                <label className="text-sm">
+                  <span className="block text-ink/60 mb-1 font-medium">12th / Diploma %</span>
+                  <input name="twelfthPercent" value={profile.twelfthPercent} onChange={handleInputChange} type="number" step="0.1"
+                    className="w-full border border-ink/15 rounded-md px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-gold/50" />
+                </label>
+                <label className="text-sm">
+                  <span className="block text-ink/60 mb-1 font-medium">CGPA</span>
+                  <input name="cgpa" value={profile.cgpa} onChange={handleInputChange} type="number" step="0.1"
+                    className="w-full border border-ink/15 rounded-md px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-gold/50" />
+                </label>
+                <label className="text-sm">
+                  <span className="block text-ink/60 mb-1 font-medium">Active Backlogs</span>
+                  <input name="activeBacklogs" value={profile.activeBacklogs} onChange={handleInputChange} type="number"
+                    className="w-full border border-ink/15 rounded-md px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-gold/50" />
+                </label>
+                <label className="text-sm">
+                  <span className="block text-ink/60 mb-1 font-medium">Gap Years</span>
+                  <input name="gapYears" value={profile.gapYears} onChange={handleInputChange} type="number"
+                    className="w-full border border-ink/15 rounded-md px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-gold/50" />
+                </label>
+                <label className="text-sm">
+                  <span className="block text-ink/60 mb-1 font-medium">Branch</span>
+                  <select name="branch" value={profile.branch} onChange={handleInputChange}
+                    className="w-full border border-ink/15 rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-gold/50">
+                    {BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                </label>
+                <div className="sm:col-span-3">
+                  <button type="submit" className="bg-ink text-papercard font-semibold text-sm px-6 py-2.5 rounded-md hover:bg-inkdeep transition-colors inline-flex items-center gap-2">
+                    Check Eligibility <ArrowRight size={16} />
+                  </button>
+                </div>
+              </form>
+
+              {hasEvaluated && (
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {results.map(company => (
+                    <div key={company.id} className="border border-ink/10 rounded-lg p-5 bg-white/60 flex flex-col gap-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <Building2 size={18} className="text-ink/50" />
+                          <div>
+                            <p className="font-display font-semibold">{company.name}</p>
+                            <p className="text-xs text-ink/50">{company.role}</p>
+                          </div>
+                        </div>
+                        <StampBadge eligible={company.isEligible} />
+                      </div>
+                      <p className="font-mono text-sm text-gold font-semibold">{company.package}</p>
+                      {!company.isEligible && (
+                        <ul className="space-y-1.5 mt-1">
+                          {company.reasons.map((r, i) => (
+                            <li key={i} className="flex items-start gap-2 text-xs text-maroon/90">
+                              <AlertCircle size={13} className="mt-0.5 shrink-0" /> {r}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* INTERVIEW TAB */}
+          {activeTab === 'interview' && (
+            <div>
+              <div className="flex items-center gap-2 mb-6">
+                <Video size={20} className="text-gold" />
+                <h2 className="font-display font-semibold text-xl">AI Interview Simulator</h2>
+              </div>
+
+              {!interviewStarted && (
+                <div className="grid sm:grid-cols-2 gap-4 max-w-xl">
+                  <label className="text-sm">
+                    <span className="block text-ink/60 mb-1 font-medium">Company</span>
+                    <select value={interviewCompany} onChange={e => setInterviewCompany(e.target.value)}
+                      className="w-full border border-ink/15 rounded-md px-3 py-2 bg-white">
+                      {UNIQUE_COMPANY_NAMES.map(n => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                  </label>
+                  <label className="text-sm">
+                    <span className="block text-ink/60 mb-1 font-medium">Target Role</span>
+                    <input value={interviewRole} onChange={e => setInterviewRole(e.target.value)}
+                      className="w-full border border-ink/15 rounded-md px-3 py-2" />
+                  </label>
+                  <div className="sm:col-span-2 flex items-center justify-between">
+                    <button onClick={() => setInterviewVoiceEnabled(v => !v)}
+                      className="text-xs text-ink/50 inline-flex items-center gap-1.5 hover:text-ink/80">
+                      {interviewVoiceEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
+                      Interviewer voice {interviewVoiceEnabled ? "on" : "off"}
+                    </button>
+                    <button onClick={startInterview} disabled={isInterviewLoading}
+                      className="bg-ink text-papercard font-semibold text-sm px-6 py-2.5 rounded-md hover:bg-inkdeep transition-colors inline-flex items-center gap-2 disabled:opacity-50">
+                      {isInterviewLoading ? <RefreshCw size={16} className="animate-spin" /> : <Play size={16} />}
+                      Start Interview
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {interviewStarted && interviewRound <= 3 && (
+                <div className="max-w-2xl">
+                  <div className="flex items-center gap-2 text-xs text-ink/50 font-mono uppercase tracking-wide mb-3">
+                    Round {interviewRound} of 3 &middot; {interviewCompany} &middot; {interviewRole}
+                  </div>
+
+                  <div className="bg-ink text-papercard rounded-lg p-5 mb-4 relative">
+                    <p className="text-sm leading-relaxed">{currentQuestion || "Loading question..."}</p>
+                    {audioUrl && (
+                      <audio ref={audioRef} src={audioUrl} className="hidden" />
+                    )}
+                    {isSpeaking && (
+                      <div className="absolute top-4 right-4 text-gold flex gap-1">
+                        <span className="dot">&#9679;</span><span className="dot">&#9679;</span><span className="dot">&#9679;</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <textarea
+                    value={userAnswer}
+                    onChange={e => setUserAnswer(e.target.value)}
+                    placeholder="Type your answer here..."
+                    rows={5}
+                    className="w-full border border-ink/15 rounded-md px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-gold/50"
+                  />
+                  <button onClick={submitInterviewAnswer} disabled={isInterviewLoading || !userAnswer.trim()}
+                    className="bg-ink text-papercard font-semibold text-sm px-6 py-2.5 rounded-md hover:bg-inkdeep transition-colors inline-flex items-center gap-2 disabled:opacity-50">
+                    {isInterviewLoading ? <RefreshCw size={16} className="animate-spin" /> : <Send size={16} />}
+                    {interviewRound < 3 ? "Submit & Continue" : "Submit & Finish"}
+                  </button>
+
+                  {interviewHistory.length > 0 && (
+                    <div className="mt-6 space-y-3 border-t border-ink/10 pt-4">
+                      {interviewHistory.map((h, i) => (
+                        <div key={i} className={"text-sm " + (h.role === 'interviewer' ? "text-ink/70" : "text-ink font-medium pl-4")}>
+                          <span className="text-xs font-mono uppercase text-ink/30 mr-2">{h.role === 'interviewer' ? 'Q' : 'A'}</span>
+                          {h.text}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {interviewRound === 4 && interviewerFeedback && (
+                <div className="max-w-2xl">
+                  <div className="border-2 border-gold/40 rounded-lg p-6 bg-white/60 mb-4">
+                    <div className="flex items-center gap-2 mb-4 text-gold">
+                      <Award size={18} />
+                      <span className="font-display font-semibold">Interview Evaluation</span>
+                    </div>
+                    <FormattedText text={interviewerFeedback} />
+                  </div>
+                  <button onClick={resetInterview}
+                    className="bg-ink text-papercard font-semibold text-sm px-6 py-2.5 rounded-md hover:bg-inkdeep transition-colors inline-flex items-center gap-2">
+                    <RefreshCw size={16} /> Start New Interview
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* RESUME TAB */}
+          {activeTab === 'resume' && (
+            <div>
+              <div className="flex items-center gap-2 mb-6">
+                <FileText size={20} className="text-gold" />
+                <h2 className="font-display font-semibold text-xl">Resume Analyzer</h2>
+              </div>
+
+              <div className="grid lg:grid-cols-2 gap-6">
+                <div>
+                  <label className="text-sm block mb-3">
+                    <span className="block text-ink/60 mb-1 font-medium">Target Company</span>
+                    <select value={resumeTargetCompany} onChange={e => setResumeTargetCompany(e.target.value)}
+                      className="w-full border border-ink/15 rounded-md px-3 py-2 bg-white">
+                      {UNIQUE_COMPANY_NAMES.map(n => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                  </label>
+                  <label className="text-sm block mb-3">
+                    <span className="block text-ink/60 mb-1 font-medium">Resume Text</span>
+                    <textarea value={resumeText} onChange={e => setResumeText(e.target.value)} rows={12}
+                      className="w-full border border-ink/15 rounded-md px-3 py-2 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-gold/50" />
+                  </label>
+                  <button onClick={analyzeResume} disabled={isResumeAnalyzing || !resumeText.trim()}
+                    className="bg-ink text-papercard font-semibold text-sm px-6 py-2.5 rounded-md hover:bg-inkdeep transition-colors inline-flex items-center gap-2 disabled:opacity-50">
+                    {isResumeAnalyzing ? <RefreshCw size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                    Analyze Resume
+                  </button>
+                </div>
+
+                <div className="border border-ink/10 rounded-lg p-5 bg-white/60 min-h-[300px]">
+                  {isResumeAnalyzing && (
+                    <p className="text-sm text-ink/40 italic">Reviewing resume against {resumeTargetCompany} standards...</p>
+                  )}
+                  {!isResumeAnalyzing && !resumeFeedback && (
+                    <p className="text-sm text-ink/40 italic">Your ATS review and suggestions will appear here.</p>
+                  )}
+                  {resumeFeedback && <FormattedText text={resumeFeedback} />}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MOCK TEST TAB */}
+          {activeTab === 'test' && (
+            <div>
+              <div className="flex items-center gap-2 mb-6">
+                <BookOpenCheck size={20} className="text-gold" />
+                <h2 className="font-display font-semibold text-xl">Mock Test Generator</h2>
+              </div>
+
+              {generatedTest.length === 0 && (
+                <div className="grid sm:grid-cols-2 gap-4 max-w-xl">
+                  <label className="text-sm">
+                    <span className="block text-ink/60 mb-1 font-medium">Company</span>
+                    <select value={selectedTestCompany} onChange={e => setSelectedTestCompany(e.target.value)}
+                      className="w-full border border-ink/15 rounded-md px-3 py-2 bg-white">
+                      {UNIQUE_COMPANY_NAMES.map(n => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                  </label>
+                  <label className="text-sm">
+                    <span className="block text-ink/60 mb-1 font-medium">Category</span>
+                    <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)}
+                      className="w-full border border-ink/15 rounded-md px-3 py-2 bg-white">
+                      {TEST_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </label>
+                  <div className="sm:col-span-2">
+                    <button onClick={generateMockTest} disabled={isGeneratingTest}
+                      className="bg-ink text-papercard font-semibold text-sm px-6 py-2.5 rounded-md hover:bg-inkdeep transition-colors inline-flex items-center gap-2 disabled:opacity-50">
+                      {isGeneratingTest ? <RefreshCw size={16} className="animate-spin" /> : <BookOpen size={16} />}
+                      Generate 5-Question Test
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {generatedTest.length > 0 && !showTestResults && (
+                <div className="max-w-2xl">
+                  <div className="flex items-center justify-between text-xs text-ink/50 font-mono uppercase tracking-wide mb-3">
+                    <span>Question {currentQuestionIndex + 1} of {generatedTest.length}</span>
+                    <span>{selectedTestCompany} &middot; {selectedCategory}</span>
+                  </div>
+
+                  <div className="bg-white/60 border border-ink/10 rounded-lg p-5 mb-4">
+                    <p className="font-medium mb-4">{generatedTest[currentQuestionIndex].question}</p>
+                    <div className="space-y-2">
+                      {generatedTest[currentQuestionIndex].options.map((opt, i) => (
+                        <button key={i} onClick={() => handleAnswerSelect(i)}
+                          className={
+                            "w-full text-left text-sm px-4 py-2.5 rounded-md border transition-colors flex items-center gap-2 " +
+                            (selectedAnswers[currentQuestionIndex] === i
+                              ? "border-gold bg-gold/10 font-medium"
+                              : "border-ink/10 hover:border-ink/25")
+                          }>
+                          {selectedAnswers[currentQuestionIndex] === i && <Check size={14} className="text-gold" />}
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <button
+                      onClick={() => setCurrentQuestionIndex(i => Math.max(0, i - 1))}
+                      disabled={currentQuestionIndex === 0}
+                      className="text-sm text-ink/50 disabled:opacity-30 hover:text-ink/80">
+                      Previous
+                    </button>
+                    {currentQuestionIndex < generatedTest.length - 1 ? (
+                      <button
+                        onClick={() => setCurrentQuestionIndex(i => Math.min(generatedTest.length - 1, i + 1))}
+                        className="bg-ink text-papercard text-sm font-semibold px-5 py-2 rounded-md hover:bg-inkdeep inline-flex items-center gap-2">
+                        Next <ArrowRight size={14} />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setShowTestResults(true)}
+                        className="bg-gold text-ink text-sm font-semibold px-5 py-2 rounded-md hover:bg-goldlight inline-flex items-center gap-2">
+                        Submit Test <Check size={14} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {showTestResults && (
+                <div className="max-w-2xl">
+                  <div className="border-2 border-gold/40 rounded-lg p-5 bg-white/60 mb-5 flex items-center gap-4">
+                    <TrendingUp size={28} className="text-gold" />
+                    <div>
+                      <p className="font-display font-bold text-2xl">{computeScore()} / {generatedTest.length}</p>
+                      <p className="text-xs text-ink/50 font-mono uppercase tracking-wide">Score &middot; {selectedTestCompany} {selectedCategory}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 mb-5">
+                    {generatedTest.map((q, idx) => {
+                      const correct = selectedAnswers[idx] === q.correctAnswerIndex;
+                      return (
+                        <div key={idx} className="border border-ink/10 rounded-lg p-4 bg-white/60">
+                          <div className="flex items-start gap-2 mb-2">
+                            {correct ? <CheckCircle2 size={16} className="text-forest mt-0.5 shrink-0" /> : <XCircle size={16} className="text-maroon mt-0.5 shrink-0" />}
+                            <p className="text-sm font-medium">{q.question}</p>
+                          </div>
+                          <p className="text-xs text-ink/60 ml-6">Correct answer: <span className="font-medium text-ink">{q.options[q.correctAnswerIndex]}</span></p>
+                          <p className="text-xs text-ink/50 ml-6 mt-1 italic">{q.explanation}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    onClick={() => { setGeneratedTest([]); setShowTestResults(false); }}
+                    className="bg-ink text-papercard font-semibold text-sm px-6 py-2.5 rounded-md hover:bg-inkdeep transition-colors inline-flex items-center gap-2">
+                    <RefreshCw size={16} /> Generate Another Test
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+        </div>
+      </main>
+
+      {/* Chat launcher */}
+      <button
+        onClick={() => setIsChatOpen(o => !o)}
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-gold text-ink shadow-lg flex items-center justify-center hover:bg-goldlight transition-colors z-40"
+        aria-label="Toggle placement advisor chat"
+      >
+        {isChatOpen ? <X size={22} /> : <MessageSquare size={22} />}
+      </button>
+
+      {/* Chat panel */}
+      {isChatOpen && (
+        <div className="fixed bottom-24 right-6 w-[90vw] max-w-sm h-[70vh] max-h-[520px] bg-papercard border-2 border-ink/10 rounded-lg shadow-2xl flex flex-col z-40 overflow-hidden">
+          <div className="bg-ink text-papercard px-4 py-3 flex items-center gap-2">
+            <HelpCircle size={16} className="text-gold" />
+            <div>
+              <p className="font-display font-semibold text-sm">Placement Advisor</p>
+              <p className="text-[10px] text-papercard/50 font-mono uppercase tracking-wide">PYQs &middot; syllabus &middot; interview tips</p>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+            {chatMessages.map((m, i) => (
+              <div key={i} className={"flex " + (m.role === 'user' ? "justify-end" : "justify-start")}>
+                <div className={
+                  "max-w-[80%] text-sm px-3 py-2 rounded-lg " +
+                  (m.role === 'user' ? "bg-ink text-papercard rounded-br-none" : "bg-white border border-ink/10 rounded-bl-none")
+                }>
+                  {m.text}
+                </div>
+              </div>
+            ))}
+            {isTyping && (
+              <div className="flex justify-start">
+                <div className="bg-white border border-ink/10 rounded-lg rounded-bl-none px-3 py-2 flex gap-1 text-gold">
+                  <span className="dot">&#9679;</span><span className="dot">&#9679;</span><span className="dot">&#9679;</span>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          <div className="px-3 py-2 flex gap-2 overflow-x-auto border-t border-ink/10">
+            {["Give me TCS PYQs", "Syllabus books for aptitude?", "Interview tips for Amazon"].map(q => (
+              <button key={q} onClick={() => handleSendMessage(q)}
+                className="shrink-0 text-[11px] border border-ink/15 rounded-full px-3 py-1 text-ink/60 hover:bg-ink/5">
+                {q}
+              </button>
+            ))}
+          </div>
+
+          <div className="p-3 border-t border-ink/10 flex gap-2">
+            <input
+              value={chatInput}
+              onChange={e => setChatInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleSendMessage(); }}
+              placeholder="Ask about PYQs, syllabus, interview tips..."
+              className="flex-1 border border-ink/15 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/50"
+            />
+            <button onClick={() => handleSendMessage()}
+              className="bg-ink text-papercard w-9 h-9 rounded-md flex items-center justify-center hover:bg-inkdeep shrink-0">
+              <Send size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+</script>
+</body>
+</html>
