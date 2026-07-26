@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Mock Interview</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav>
+  <div class="brand"><span class="dot"></span> Placement Checker</div>
+  <div class="nav-links" id="nav-links"></div>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <h1>AI mock interview</h1>
+    <p>Practice with real previous-year questions. Answers are scored automatically, with model answers shown after.</p>
+  </div>
+
+  <div class="card">
+    <h2>Set up your session</h2>
+    <label>Branch</label>
+    <select id="branch">
+      <option>CSE</option><option>AI</option><option>DS</option><option>IT</option>
+      <option>ECE</option><option>EEE</option><option>MECH</option><option>CIVIL</option>
+    </select>
+    <label>Round type</label>
+    <select id="round">
+      <option>Technical</option><option>Aptitude</option><option>Coding</option><option>HR</option>
+    </select>
+    <label>Number of questions</label>
+    <input type="number" id="count" value="5" min="1" max="10">
+    <button style="margin-top:18px" onclick="startInterview()">Start interview</button>
+  </div>
+
+  <div class="card" id="chat-card" style="display:none">
+    <h2>Session</h2>
+    <div class="chat" id="chat"></div>
+    <div style="margin-top:16px;display:flex;gap:10px;">
+      <input id="answer" placeholder="Type your answer...">
+      <button onclick="submitAnswer()">Submit</button>
+    </div>
+  </div>
+</div>
+
+<footer>AI Placement Eligibility Checker &middot; Mock Interview</footer>
+
+<script src="js/api.js"></script>
+<script>
+requireLogin();
+renderNav("interview");
+
+let questions = [];
+let currentIndex = 0;
+
+async function startInterview() {
+  const branch = document.getElementById("branch").value;
+  const round = document.getElementById("round").value;
+  const count = document.getElementById("count").value;
+
+  const data = await api(`/interview/start?branch=${branch}&round=${round}&count=${count}`);
+  questions = data.questions;
+  currentIndex = 0;
+
+  document.getElementById("chat-card").style.display = "block";
+  document.getElementById("chat").innerHTML = "";
+  askNext();
+}
+
+function askNext() {
+  if (currentIndex >= questions.length) {
+    addBubble("You've completed this mock interview session. Start a new one anytime.", "q");
+    document.querySelector("#chat-card > div:last-of-type").style.display = "none";
+    return;
+  }
+  addBubble(`Q${currentIndex + 1}: ${questions[currentIndex].question}`, "q");
+}
+
+function addBubble(text, cls) {
+  const chat = document.getElementById("chat");
+  const div = document.createElement("div");
+  div.className = "bubble " + cls;
+  div.innerText = text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+async function submitAnswer() {
+  const answerInput = document.getElementById("answer");
+  const answer = answerInput.value.trim();
+  if (!answer) return;
+
+  addBubble(answer, "a");
+  answerInput.value = "";
+
+  const q = questions[currentIndex];
+  try {
+    const result = await api("/interview/evaluate", { method: "POST", body: { questionId: q.id, answer } });
+    addBubble(`Score: ${result.score}/100 — ${result.feedback}\nModel answer: ${result.modelAnswer}`, "q");
+  } catch (err) {
+    addBubble("Could not evaluate that answer: " + err.message, "q");
+  }
+
+  currentIndex++;
+  setTimeout(askNext, 400);
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && document.activeElement.id === "answer") submitAnswer();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login · Placement Eligibility Checker</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav>
+  <div class="brand"><span class="dot"></span> Placement Checker</div>
+  <div class="nav-links" id="nav-links"></div>
+</nav>
+
+<div class="wrap" style="max-width:460px;">
+  <div class="hero">
+    <h1>Sign in</h1>
+    <p>Track your eligibility, get resume feedback, and practice mock interviews — all in one place.</p>
+  </div>
+
+  <div id="msg"></div>
+
+  <div class="card" id="login-card">
+    <h2>Login</h2>
+    <label>Email</label>
+    <input id="login-email" type="email" placeholder="you@college.edu">
+    <label>Password</label>
+    <input id="login-password" type="password" placeholder="••••••••">
+    <button style="margin-top:18px;width:100%" onclick="doLogin()">Log in</button>
+    <p style="margin-top:14px;font-size:13px;color:var(--muted)">
+      New here? <a href="#" onclick="toggleForm(); return false;" style="color:var(--accent)">Create an account</a>
+    </p>
+  </div>
+
+  <div class="card" id="register-card" style="display:none">
+    <h2>Create account</h2>
+    <label>Full name</label>
+    <input id="reg-name" placeholder="Your name">
+    <label>Email</label>
+    <input id="reg-email" type="email" placeholder="you@college.edu">
+    <label>Password</label>
+    <input id="reg-password" type="password" placeholder="Choose a password">
+    <label>Branch</label>
+    <select id="reg-branch">
+      <option>CSE</option><option>AI</option><option>DS</option><option>IT</option>
+      <option>ECE</option><option>EEE</option><option>MECH</option><option>CIVIL</option>
+    </select>
+    <label>CGPA</label>
+    <input id="reg-cgpa" type="number" step="0.01" placeholder="e.g. 7.8">
+    <label>Backlogs</label>
+    <input id="reg-backlogs" type="number" placeholder="0">
+    <label>Skills (comma separated)</label>
+    <input id="reg-skills" placeholder="Java, SQL, DSA">
+    <label style="display:flex;align-items:center;gap:8px;">
+      <input type="checkbox" id="reg-is-admin" style="width:auto"> Register as admin (demo only)
+    </label>
+    <button style="margin-top:18px;width:100%" onclick="doRegister()">Create account</button>
+    <p style="margin-top:14px;font-size:13px;color:var(--muted)">
+      Already registered? <a href="#" onclick="toggleForm(); return false;" style="color:var(--accent)">Log in</a>
+    </p>
+  </div>
+</div>
+
+<footer>AI Placement Eligibility Checker &middot; Full-stack demo</footer>
+
+<script src="js/api.js"></script>
+<script>
+renderNav("login");
+
+function toggleForm() {
+  document.getElementById("login-card").style.display =
+    document.getElementById("login-card").style.display === "none" ? "block" : "none";
+  document.getElementById("register-card").style.display =
+    document.getElementById("register-card").style.display === "none" ? "block" : "none";
+}
+
+function showMsg(text, type = "info") {
+  document.getElementById("msg").innerHTML = `<div class="notice ${type}">${text}</div>`;
+}
+
+async function doLogin() {
+  try {
+    const email = document.getElementById("login-email").value;
+    const password = document.getElementById("login-password").value;
+    const data = await api("/auth/login", { method: "POST", body: { email, password } });
+    setSession(data.token, data.user);
+    window.location.href = data.user.role === "admin" ? "admin.html" : "index.html";
+  } catch (err) {
+    showMsg(err.message, "error");
+  }
+}
+
+async function doRegister() {
+  try {
+    const body = {
+      name: document.getElementById("reg-name").value,
+      email: document.getElementById("reg-email").value,
+      password: document.getElementById("reg-password").value,
+      branch: document.getElementById("reg-branch").value,
+      cgpa: document.getElementById("reg-cgpa").value,
+      backlogs: document.getElementById("reg-backlogs").value,
+      skills: document.getElementById("reg-skills").value,
+      role: document.getElementById("reg-is-admin").checked ? "admin" : "student",
+    };
+    const data = await api("/auth/register", { method: "POST", body });
+    setSession(data.token, data.user);
+    window.location.href = data.user.role === "admin" ? "admin.html" : "index.html";
+  } catch (err) {
+    showMsg(err.message, "error");
+  }
+}
+</script>
+</body>
+</html>

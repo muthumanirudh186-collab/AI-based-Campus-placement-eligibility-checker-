@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Placement Eligibility Checker</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav>
+  <div class="brand"><span class="dot"></span> Placement Checker</div>
+  <div class="nav-links" id="nav-links"></div>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <h1>Know exactly which companies you qualify for.</h1>
+    <p>Enter your profile once — we check it against a live 500-company dataset and tell you what to fix.</p>
+  </div>
+
+  <div class="card">
+    <h2>Your profile</h2>
+    <label>Branch</label>
+    <select id="branch">
+      <option>CSE</option><option>AI</option><option>DS</option><option>IT</option>
+      <option>ECE</option><option>EEE</option><option>MECH</option><option>CIVIL</option>
+    </select>
+    <label>CGPA</label>
+    <input type="number" step="0.01" id="cgpa" placeholder="e.g. 7.5">
+    <label>Backlogs</label>
+    <input type="number" id="backlogs" placeholder="0">
+    <label>Skills (comma separated)</label>
+    <input id="skills" placeholder="Java, Python, SQL, DSA">
+    <button style="margin-top:18px" onclick="checkEligibility()">Check eligibility</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat-box"><div class="num" id="total">0</div><div class="label">Total Companies</div></div>
+    <div class="stat-box"><div class="num" id="eligible">0</div><div class="label">Eligible</div></div>
+    <div class="stat-box"><div class="num" id="noteligible">0</div><div class="label">Not Eligible</div></div>
+  </div>
+
+  <div class="card" id="career-card" style="display:none">
+    <h2>Career readiness score</h2>
+    <div class="gauge-track"><div class="gauge-fill" id="gauge" style="width:0%">0%</div></div>
+  </div>
+
+  <div class="card">
+    <h2>Search companies</h2>
+    <input id="search" placeholder="Search by company name..." onkeyup="searchCompany()">
+    <div id="companies" style="margin-top:14px;"></div>
+  </div>
+
+  <div class="card">
+    <h2>Eligible companies</h2>
+    <div id="result"><p style="color:var(--muted)">Fill in your profile above and check eligibility.</p></div>
+  </div>
+
+  <div class="card">
+    <h2>AI suggestions</h2>
+    <div id="ai" style="color:var(--muted)">Waiting for your profile...</div>
+  </div>
+</div>
+
+<footer>AI Placement Eligibility Checker &middot; Full-stack demo (Node.js + Express + MongoDB)</footer>
+
+<script src="js/api.js"></script>
+<script>
+requireLogin();
+renderNav("index");
+loadCompanyCount();
+prefillFromUser();
+
+async function loadCompanyCount() {
+  try {
+    const data = await api("/companies");
+    document.getElementById("total").innerHTML = data.count;
+    renderCompanyList(data.companies.slice(0, 30));
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function prefillFromUser() {
+  const user = getUser();
+  if (!user) return;
+  if (user.branch) document.getElementById("branch").value = user.branch;
+  if (user.cgpa) document.getElementById("cgpa").value = user.cgpa;
+  if (user.backlogs != null) document.getElementById("backlogs").value = user.backlogs;
+  if (user.skills) document.getElementById("skills").value = user.skills.join(", ");
+}
+
+function renderCompanyList(companies) {
+  document.getElementById("companies").innerHTML = companies.map(c => `
+    <div class="company-row">
+      <div>
+        <div class="name">${c.name}</div>
+        <div class="meta">CGPA ≥ ${c.cgpa} · Backlogs ≤ ${c.backlogs} · ${c.category}</div>
+      </div>
+      <span class="tag">₹${c.package_lpa} LPA</span>
+    </div>
+  `).join("");
+}
+
+async function searchCompany() {
+  const text = document.getElementById("search").value;
+  const data = await api("/companies?search=" + encodeURIComponent(text));
+  renderCompanyList(data.companies.slice(0, 40));
+}
+
+async function checkEligibility() {
+  const branch = document.getElementById("branch").value;
+  const cgpa = document.getElementById("cgpa").value;
+  const backlogs = document.getElementById("backlogs").value;
+  const skills = document.getElementById("skills").value.split(",").map(s => s.trim()).filter(Boolean);
+
+  try {
+    const data = await api("/companies/eligibility", { method: "POST", body: { branch, cgpa, backlogs, skills } });
+
+    document.getElementById("eligible").innerHTML = data.eligibleCount;
+    document.getElementById("noteligible").innerHTML = data.notEligibleCount;
+
+    const resultEl = document.getElementById("result");
+    resultEl.innerHTML = data.eligible.length === 0
+      ? "<p style='color:var(--muted)'>No companies matched your profile yet.</p>"
+      : data.eligible.map(c => `
+          <div class="company-row">
+            <div>
+              <div class="name">${c.name}</div>
+              <div class="meta">Requires: ${c.skills.join(", ")}</div>
+            </div>
+            <span class="tag">₹${c.package_lpa} LPA</span>
+          </div>
+        `).join("");
+
+    const cg = parseFloat(cgpa) || 0;
+    const bl = parseInt(backlogs) || 0;
+    let score = Math.round((cg / 10) * 100) - bl * 10;
+    score = Math.max(0, Math.min(100, score));
+    document.getElementById("career-card").style.display = "block";
+    document.getElementById("gauge").style.width = score + "%";
+    document.getElementById("gauge").innerText = score + "%";
+
+    const tips = [];
+    if (cg < 7) tips.push("Increase your CGPA to 7.0 or above to unlock more product-based companies.");
+    if (bl > 0) tips.push("Clear your active backlogs — most core companies require zero backlogs.");
+    if (data.missingSkills.length) tips.push("Skills to learn next: " + data.missingSkills.slice(0, 6).join(", "));
+    if (tips.length === 0) tips.push("Excellent profile! Keep practicing coding interviews and mock interviews.");
+
+    document.getElementById("ai").innerHTML = "<ul>" + tips.map(t => `<li>${t}</li>`).join("") + "</ul>";
+  } catch (err) {
+    document.getElementById("result").innerHTML = `<div class="notice error">${err.message}</div>`;
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resume Analyzer</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav>
+  <div class="brand"><span class="dot"></span> Placement Checker</div>
+  <div class="nav-links" id="nav-links"></div>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <h1>Resume analyzer</h1>
+    <p>Upload a PDF or paste your resume text. We scan for key skills, sections, and give tips to strengthen it.</p>
+  </div>
+
+  <div class="card">
+    <h2>Upload resume</h2>
+    <label>PDF or .txt file</label>
+    <input type="file" id="file" accept=".pdf,.txt">
+    <label>...or paste resume text</label>
+    <textarea id="text" rows="6" placeholder="Paste resume text here instead of uploading a file"></textarea>
+    <button style="margin-top:18px" onclick="analyze()">Analyze resume</button>
+  </div>
+
+  <div id="output"></div>
+</div>
+
+<footer>AI Placement Eligibility Checker &middot; Resume Analyzer</footer>
+
+<script src="js/api.js"></script>
+<script>
+requireLogin();
+renderNav("resume");
+
+async function analyze() {
+  const fileInput = document.getElementById("file");
+  const text = document.getElementById("text").value;
+  const output = document.getElementById("output");
+  output.innerHTML = `<div class="notice info">Analyzing...</div>`;
+
+  try {
+    let data;
+    if (fileInput.files.length > 0) {
+      const form = new FormData();
+      form.append("resume", fileInput.files[0]);
+      data = await api("/resume/analyze", { method: "POST", body: form, isForm: true });
+    } else if (text.trim()) {
+      data = await api("/resume/analyze", { method: "POST", body: { text } });
+    } else {
+      output.innerHTML = `<div class="notice error">Upload a file or paste some text first.</div>`;
+      return;
+    }
+
+    output.innerHTML = `
+      <div class="card">
+        <h2>Resume score</h2>
+        <div class="gauge-track"><div class="gauge-fill" style="width:${data.score}%">${data.score}%</div></div>
+      </div>
+      <div class="card">
+        <h2>Skills found</h2>
+        <div>${data.foundSkills.map(s => `<span class="tag">${s}</span>`).join(" ") || "None detected"}</div>
+        <h2 style="margin-top:20px">Sections detected</h2>
+        <div>${data.foundSections.map(s => `<span class="tag">${s}</span>`).join(" ") || "None detected"}</div>
+      </div>
+      <div class="card">
+        <h2>Tips to improve</h2>
+        <ul>${data.tips.map(t => `<li style="margin-bottom:8px;color:var(--muted)">${t}</li>`).join("")}</ul>
+      </div>
+    `;
+  } catch (err) {
+    output.innerHTML = `<div class="notice error">${err.message}</div>`;
+  }
+}
+</script>
+</body>
+</html>

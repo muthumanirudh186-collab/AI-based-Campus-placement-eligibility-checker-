@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PYQs & Syllabus</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav>
+  <div class="brand"><span class="dot"></span> Placement Checker</div>
+  <div class="nav-links" id="nav-links"></div>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <h1>Previous year questions &amp; syllabus</h1>
+    <p>Browse company-wise interview questions and the core syllabus for your branch.</p>
+  </div>
+
+  <div class="card">
+    <h2>Filter questions</h2>
+    <label>Company (optional)</label>
+    <input id="company" placeholder="e.g. TCS, Infosys, Amazon">
+    <label>Branch</label>
+    <select id="branch">
+      <option value="">All</option>
+      <option>CSE</option><option>AI</option><option>DS</option><option>IT</option>
+      <option>ECE</option><option>EEE</option><option>MECH</option><option>CIVIL</option>
+    </select>
+    <label>Round</label>
+    <select id="round">
+      <option value="">All</option>
+      <option>Aptitude</option><option>Technical</option><option>Coding</option><option>HR</option>
+    </select>
+    <button style="margin-top:18px" onclick="loadPyqs()">Search</button>
+  </div>
+
+  <div class="card">
+    <h2>Questions</h2>
+    <div id="pyqs" style="color:var(--muted)">Use the filters above to load questions.</div>
+  </div>
+
+  <div class="card">
+    <h2>Branch syllabus</h2>
+    <select id="syllabus-branch" onchange="loadSyllabus()">
+      <option value="">Select branch</option>
+      <option>CSE</option><option>AI</option><option>DS</option><option>IT</option>
+      <option>ECE</option><option>EEE</option><option>MECH</option><option>CIVIL</option>
+    </select>
+    <div id="syllabus" style="margin-top:14px;"></div>
+  </div>
+</div>
+
+<footer>AI Placement Eligibility Checker &middot; PYQs &amp; Syllabus</footer>
+
+<script src="js/api.js"></script>
+<script>
+requireLogin();
+renderNav("pyq");
+
+async function loadPyqs() {
+  const company = document.getElementById("company").value;
+  const branch = document.getElementById("branch").value;
+  const round = document.getElementById("round").value;
+
+  const params = new URLSearchParams();
+  if (company) params.set("company", company);
+  if (branch) params.set("branch", branch);
+  if (round) params.set("round", round);
+
+  const data = await api("/content/pyqs?" + params.toString());
+  const el = document.getElementById("pyqs");
+
+  if (data.pyqs.length === 0) {
+    el.innerHTML = "<p>No questions matched those filters.</p>";
+    return;
+  }
+
+  el.innerHTML = `
+    <table>
+      <tr><th>Company</th><th>Round</th><th>Question</th><th>Answer</th></tr>
+      ${data.pyqs.slice(0, 100).map(q => `
+        <tr>
+          <td>${q.company}</td>
+          <td>${q.round}</td>
+          <td>${q.question}</td>
+          <td>${q.answer || "-"}</td>
+        </tr>
+      `).join("")}
+    </table>
+  `;
+}
+
+async function loadSyllabus() {
+  const branch = document.getElementById("syllabus-branch").value;
+  const el = document.getElementById("syllabus");
+  if (!branch) { el.innerHTML = ""; return; }
+
+  try {
+    const data = await api("/content/syllabus/" + branch);
+    el.innerHTML = data.topics.map(t => `<span class="tag" style="margin-bottom:8px;display:inline-block">${t}</span>`).join(" ");
+  } catch (err) {
+    el.innerHTML = `<div class="notice error">${err.message}</div>`;
+  }
+}
+</script>
+</body>
+</html>
