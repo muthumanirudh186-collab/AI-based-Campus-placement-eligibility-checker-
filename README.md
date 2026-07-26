@@ -1,1 +1,0 @@
-# AI-based-Campus-placement-eligibility-checker-
